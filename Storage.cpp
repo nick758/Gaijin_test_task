@@ -22,8 +22,15 @@ Storage::Storage(const std::string& configPath) :
 
 Storage::~Storage()
 {
+    BOOST_LOG_TRIVIAL(debug) << "~Storage";
     stopThread = true;
     saveThread.join();
+    BOOST_LOG_TRIVIAL(debug) << "~Storage 1";
+
+    if (dataChanged)
+    {
+        SaveConfig(configPath);
+    }
 }
 
 void Storage::LoadConfig(const std::string& filename)
@@ -46,6 +53,22 @@ void Storage::LoadConfig(const std::string& filename)
         keysValues[item.first.data()] = item.second.data();
     }
 }
+
+void Storage::SaveConfig(const std::string& filename)
+{
+    boost::property_tree::ptree pt;
+
+    {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        for (const auto& item: keysValues)
+        {
+            pt.put(item.first, item.second);
+        }
+    }
+
+    boost::property_tree::ini_parser::write_ini(configPath, pt);
+}
+
 
 std::string Storage::Read(const std::string& key) const
 {
@@ -79,22 +102,9 @@ void Storage::SaveThread()
     {
         std::this_thread::sleep_for(SavePeriod);
 
-        boost::property_tree::ptree pt;
-
         if (dataChanged)
         {
-            std::lock_guard<std::mutex> lock(dataMutex);
-            for (const auto& item: keysValues)
-            {
-                pt.put(item.first, item.second);
-            }
+            SaveConfig(configPath);
         }
-        else
-        {
-            continue;
-        }
-            
-        boost::property_tree::ini_parser::write_ini(configPath, pt);
-        dataChanged = false;
     }
 }

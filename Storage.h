@@ -27,5 +27,6 @@ private:
     std::atomic_bool stopThread;
 
     void LoadConfig(const std::string& filename);
+    void SaveConfig(const std::string& filename);
     void SaveThread();
 };

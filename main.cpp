@@ -1,5 +1,6 @@
 
 #include "Storage.h"
+#include "Server.h"
 
 #include <boost/asio.hpp>
 #include <boost/log/trivial.hpp>
@@ -8,7 +9,16 @@
 #include <iostream>
 #include <optional>
 
+#include <stdio.h>
+
 namespace po = boost::program_options;
+
+void SignalHandler(int s)
+{
+    printf("Caught signal %d\n",s);
+    exit(1); 
+
+}
 
 void PrintUsage(const po::options_description& desc)
 {
@@ -57,6 +67,17 @@ int main(int ac, char** av)
         return 1;
     }
 
+
+    const int Signals[] = { SIGHUP, SIGINT, SIGTERM };
+
+    for (int sig: Signals)
+    {
+        if (signal(sig, &SignalHandler) == SIG_ERR)
+        {
+            std::cerr << "Can't handle signal " << sig << std::endl;
+        }
+    }
+
     std::cout << "configPath: " << configPath << std::endl;
     
     std::optional<Storage> storage;
@@ -71,9 +92,13 @@ int main(int ac, char** av)
     }
     catch (...)
     {
-        std::cerr << "Storage creation: Unknown error!\n";
+        std::cerr << "Storage creation: Unknown error!" << std::endl;
         return 1;
     }
+
+    Server server(port, storage.value());
+
+    server.Start();
     
     return 0;
 }
