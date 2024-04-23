@@ -9,15 +9,17 @@
 #include <iostream>
 #include <optional>
 
-#include <stdio.h>
-
 namespace po = boost::program_options;
+
+namespace
+{
+    std::atomic_bool ProgramTerminated = false;
+}
 
 void SignalHandler(int s)
 {
-    printf("Caught signal %d\n",s);
-    exit(1); 
-
+    BOOST_LOG_TRIVIAL(info) << "Caught signal " << s;
+    ProgramTerminated = true;
 }
 
 void PrintUsage(const po::options_description& desc)
@@ -42,9 +44,6 @@ int main(int ac, char** av)
             ("config-file,c", po::value<std::string>(&configPath),
              ("path to the config file, default is " + configPath).c_str());
 
-//        po::positional_options_description p;
-//        p.add("input-file", -1);
-
         po::variables_map vm;
         po::store(po::parse_command_line(ac, av, desc), vm);
 
@@ -67,7 +66,6 @@ int main(int ac, char** av)
         return 1;
     }
 
-
     const int Signals[] = { SIGHUP, SIGINT, SIGTERM };
 
     for (int sig: Signals)
@@ -87,7 +85,7 @@ int main(int ac, char** av)
     }
     catch (std::exception& e)
     {
-        std::cout << "Storage creation: " << e.what() << std::endl;
+        std::cerr << "Storage creation: " << e.what() << std::endl;
         return 1;
     }
     catch (...)
@@ -99,6 +97,11 @@ int main(int ac, char** av)
     Server server(port, storage.value());
 
     server.Start();
+
+    while (!ProgramTerminated)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
     
     return 0;
 }

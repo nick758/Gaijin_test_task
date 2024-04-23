@@ -5,17 +5,17 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-#include <stdio.h>
+//#include <stdio.h>
 
 Storage::Storage(const std::string& configPath) :
     configPath(configPath), dataChanged(false)
 {
     LoadConfig(configPath);
 
-    for (const auto &item: keysValues)
+    /*for (const auto &item: keysValues)
     {
         printf("key: %s; value: %s\n", item.first.c_str(), item.second.c_str());
-    }
+        }*/
 
     saveThread = std::thread(&Storage::SaveThread, this);
 }
