@@ -3,11 +3,12 @@ It's a test project of the creation of a simple server and client. The server pr
 
 It can be built with CMake.
 
-How to run server.
+How to run server
 
 <path_to_server>/Server -p <port> [-c <path_to_config>]
 
 For example: ./Server -p 1234 -c ./config.txt
+Test file 'config.txt' is placed in the directory 'testdata'.
 
 How to run client
 
