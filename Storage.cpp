@@ -5,27 +5,21 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-//#include <stdio.h>
-
 Storage::Storage(const std::string& configPath) :
-    configPath(configPath), dataChanged(false)
+    configPath(configPath), dataChanged(false),
+    readCount(0), writeCount(0)
 {
     LoadConfig(configPath);
-
-    /*for (const auto &item: keysValues)
-    {
-        printf("key: %s; value: %s\n", item.first.c_str(), item.second.c_str());
-        }*/
 
     saveThread = std::thread(&Storage::SaveThread, this);
 }
 
 Storage::~Storage()
 {
-    BOOST_LOG_TRIVIAL(debug) << "~Storage";
+    BOOST_LOG_TRIVIAL(trace) << "~Storage";
+
     stopThread = true;
     saveThread.join();
-    BOOST_LOG_TRIVIAL(debug) << "~Storage 1";
 
     if (dataChanged)
     {
@@ -66,9 +60,8 @@ void Storage::SaveConfig(const std::string& filename)
         }
     }
 
-    boost::property_tree::ini_parser::write_ini(configPath, pt);
+    boost::property_tree::ini_parser::write_ini(filename, pt);
 }
-
 
 std::string Storage::Read(const std::string& key) const
 {
@@ -79,12 +72,13 @@ std::string Storage::Read(const std::string& key) const
         std::lock_guard<std::mutex> lock(dataMutex);
         result = keysValues.at(key);
     }
-    catch(std::out_of_range)
+    catch(std::out_of_range&)
     {
         // if there is no such key then return empty string
     }
+    ++readCount;
     
-    return std::move(result);
+    return result;
 }
 
 void Storage::Write(const std::string& key, const std::string& value)
@@ -94,6 +88,7 @@ void Storage::Write(const std::string& key, const std::string& value)
     keysValues[key] = value;
 
     dataChanged = true;
+    ++writeCount;
 }
 
 void Storage::SaveThread()
@@ -107,4 +102,11 @@ void Storage::SaveThread()
             SaveConfig(configPath);
         }
     }
+}
+
+StorageStatistics Storage::GetStatistics() const
+{
+    StorageStatistics result {readCount, writeCount};
+
+    return result;
 }

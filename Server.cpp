@@ -58,7 +58,7 @@ void Server::MainLoop()
         acceptor(ioContext,
                  boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 
-    std::cout << "TCP Echo Server started. Listening on port " << port << "." << std::endl;
+    BOOST_LOG_TRIVIAL(info) << "TCP Echo Server started. Listening on port " << port << ".";
 
     while (!stopMainThread)
     {
@@ -84,7 +84,7 @@ void Server::MainLoop()
 
         acceptor.accept(*socket);
 
-        std::cout << "New connection from: " << socket->remote_endpoint() << std::endl;
+        BOOST_LOG_TRIVIAL(info) << "New connection from: " << socket->remote_endpoint();
 
         {
             std::lock_guard<std::mutex> lock(threadListMutex);
@@ -110,7 +110,7 @@ void Server::HandleClient(std::shared_ptr<boost::asio::ip::tcp::socket> socket)
 
             if (::poll(&pollFd, 1, pollTimeoutMs) == -1)
             {
-                BOOST_LOG_TRIVIAL(warning) << "error while polling: " << errno;            
+                BOOST_LOG_TRIVIAL(warning) << "error while polling: " << errno;
             }
             if (!(pollFd.revents & POLLIN))
             {
@@ -166,24 +166,17 @@ std::string Server::HandleCommand(const std::string& line)
 
     if (line.empty() || line[0] != CommandPrefix)
     {
-        return std::move(result);
+        return result;
     }
 
     std::vector<std::string> commandArg;
     boost::split(commandArg, line, boost::is_any_of(CommandDelimiters));
 
-    /*  int i = 0;
-    for (auto const& str: commandArg)
-    {
-        std::cout << "com_arg " << i << ": \"" << str << "\"" << std::endl;
-        ++i;
-        }*/
-
     if (commandArg.size() < 2)
     {
         BOOST_LOG_TRIVIAL(warning) << "There is no argument for a command (" <<  line << "). Command ignored.";
 
-        return std::move(result);
+        return result;
     }
     else if (commandArg.size() > 2)
     {
@@ -214,14 +207,13 @@ std::string Server::HandleCommand(const std::string& line)
         }
     }
     
-    return std::move(result);
+    return result;
 }
 
 void Server::MonitorThreads()
 {
     while (!stopMonitoringThread)
     {
-//        BOOST_LOG_TRIVIAL(info) << "monitoring thread.";
         {
             std::lock_guard<std::mutex> lock1(threadListMutex);
             std::lock_guard<std::mutex> lock2(listMutex);

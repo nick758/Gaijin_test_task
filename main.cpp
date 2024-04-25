@@ -14,6 +14,10 @@ namespace po = boost::program_options;
 namespace
 {
     std::atomic_bool ProgramTerminated = false;
+
+    const std::string DefaultConfigPath = "./config.txt";
+    
+    const std::chrono::seconds MainSleepTime = std::chrono::seconds(5);
 }
 
 void SignalHandler(int s)
@@ -34,7 +38,7 @@ int main(int ac, char** av)
     boost::log::core::get()->set_filter(boost::log::trivial::severity >= boost::log::trivial::debug);
 
     boost::asio::ip::port_type port;
-    std::string configPath = "./config.txt";
+    std::string configPath = DefaultConfigPath;
     
     try {
         po::options_description desc("Allowed options");
@@ -98,9 +102,23 @@ int main(int ac, char** av)
 
     server.Start();
 
+    StorageStatistics lastStatistics {};
+
     while (!ProgramTerminated)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(MainSleepTime);
+
+        StorageStatistics statistics = storage.value().GetStatistics();
+
+        std::cout << "Statistics: total read count: " << statistics.readCount
+                  << "; total write count: " << statistics.writeCount
+                  << "; read count for last " << MainSleepTime.count()
+                  << " seconds: " << statistics.readCount - lastStatistics.readCount
+                  << "; write count for last " << MainSleepTime.count()
+                  << " seconds: " << statistics.writeCount - lastStatistics.writeCount
+                  << std::endl;
+
+        lastStatistics = statistics;
     }
     
     return 0;
